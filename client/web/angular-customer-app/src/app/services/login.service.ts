@@ -17,20 +17,20 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { AppCheck, getToken, onTokenChanged } from '@angular/fire/app-check';
+// import { AppCheck, getToken, onTokenChanged } from '@angular/fire/app-check';
 import { Auth, onAuthStateChanged, signInAnonymously } from '@angular/fire/auth';
-import { catchError, map } from 'rxjs';
+import { catchError, from, map } from 'rxjs';
 import { ErrorResponse } from '../../../../../../shared/errorResponse';
 import { environment } from '../../environments/environment';
 
-const clearSessionUrl = `${environment.backendUrl}/clearSession`;
+// const clearSessionUrl = `${environment.backendUrl}/clearSession`;
 
 @Injectable({
   providedIn: 'root',
 })
 export class LoginService {
   private auth = inject(Auth);
-  private appCheck = inject(AppCheck);
+  // private appCheck = inject(AppCheck);
   
   idToken = signal<string>('');
   appCheckToken = signal<string>('');
@@ -53,25 +53,25 @@ export class LoginService {
       }
     });
 
-    onTokenChanged(this.appCheck, (token) => {      
-      if (token) {
-        this.appCheckToken.set(token.token)
-      } else {
-        this.getAppCheckToken()
-      }
-    });  
+    // onTokenChanged(this.appCheck, (token) => {      
+    //   if (token) {
+    //     this.appCheckToken.set(token.token)
+    //   } else {
+    //     this.getAppCheckToken()
+    //   }
+    // });  
   }
 
-  async getAppCheckToken() {
-    try {
-      this.appCheckToken.set((await getToken(this.appCheck)).token);
-    } catch (err) {
-      console.log('Error in getAppCheckToken', err);
-    }
-  }
+  // async getAppCheckToken() {
+  //   try {
+  //     this.appCheckToken.set((await getToken(this.appCheck)).token);
+  //   } catch (err) {
+  //     console.log('Error in getAppCheckToken', err);
+  //   }
+  // }
   
   getHttpOptions() {
-    this.getAppCheckToken();
+    // this.getAppCheckToken();
      
     return { 
       headers: new HttpHeaders({
@@ -96,18 +96,32 @@ export class LoginService {
     });
   }
 
-  clearSession() {        
-    return this.http.post<string>(clearSessionUrl, {}, this.getHttpOptions())
-      .pipe(
-        catchError((err: HttpErrorResponse) => {
-          console.error('Failed LoginService clearSession: ', err)
-          throw err.error;
-        }),
-        map((data: string): string => {        
-          this.auth.signOut();  
-          this.idToken.set('')
-          return data;
-        })
+  clearSession() {
+
+    console.log("new session!")
+    return from (new Promise<string>((resolve, reject) => {
+      resolve('')
+    })).pipe(
+      catchError((err) => {
+        throw err.error;
+      }),
+      map((data: string): string => {        
+        this.auth.signOut();  
+        this.idToken.set('')
+        return data;
+      })
       );
+    // return this.http.post<string>(clearSessionUrl, {}, this.getHttpOptions())
+    //   .pipe(
+    //     catchError((err: HttpErrorResponse) => {
+    //       console.error('Failed LoginService clearSession: ', err)
+    //       throw err.error;
+    //     }),
+    //     map((data: string): string => {        
+    //       this.auth.signOut();  
+    //       this.idToken.set('')
+    //       return data;
+    //     })
+    //   );
   }
 }

@@ -150,6 +150,7 @@ export class ChatbotComponent {
   }
 
   private openOrderSubmissionDialog(order: BeverageModel[]) {
+    console.log("SUBMITTING READY!!!");
     let dialogRef = this.dialog.open(OrderDialog, {
       data: { order: order },
       disableClose: true

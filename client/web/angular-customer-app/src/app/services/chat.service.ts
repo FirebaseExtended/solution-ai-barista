@@ -40,6 +40,7 @@ export class ChatService {
   private loginService: LoginService = inject(LoginService);
 
   private processChatResponse(res: ChatResponseModel) {
+    console.log('processing chat response', res);
     this.addToChatHistory(res);
     this.readyForSubmission.set(res.readyForSubmission);
     this.orderSubmitted.set(res.orderSubmitted);

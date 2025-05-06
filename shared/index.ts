@@ -21,10 +21,10 @@ import { BeverageModel } from "./beverageModel";
 import { ChatMessageModel } from "./chatMessageModel";
 import { OrderConfirmationMessage } from "./orderConfirmationMessage";
 export {
-    BeverageModel,
-    ChatMessageModel,
-    ChatResponseModel, 
-    ErrorResponse,
-    TextResponse,
-    OrderConfirmationMessage
+    type BeverageModel,
+    type ChatMessageModel,
+    type ChatResponseModel, 
+    type ErrorResponse,
+    type TextResponse,
+    type OrderConfirmationMessage
     };

@@ -23,10 +23,12 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { routes } from './app.routes';
 
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
-import { initializeAppCheck, provideAppCheck, ReCaptchaEnterpriseProvider } from '@angular/fire/app-check';
+// import { initializeAppCheck, provideAppCheck, ReCaptchaEnterpriseProvider } from '@angular/fire/app-check';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getStorage, provideStorage } from '@angular/fire/storage';
 import { environment } from "../environments/environment.development";
+import { getVertexAI, provideVertexAI } from '@angular/fire/vertexai';
+import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -38,9 +40,11 @@ export const appConfig: ApplicationConfig = {
     provideFirebaseApp(() => initializeApp(environment.firebaseConfig)), 
     provideStorage(() => getStorage()),
     provideAuth(() => getAuth()), 
-    provideAppCheck(() => {
-      const provider = new ReCaptchaEnterpriseProvider(environment.recaptchaEnterpriseKey);
-      return initializeAppCheck(undefined, { provider, isTokenAutoRefreshEnabled: true });
-    }), 
+    provideVertexAI(() => getVertexAI()),
+    provideFirestore(() => getFirestore()),
+    // provideAppCheck(() => {
+    //   const provider = new ReCaptchaEnterpriseProvider(environment.recaptchaEnterpriseKey);
+    //   return initializeAppCheck(undefined, { provider, isTokenAutoRefreshEnabled: true });
+    // }), 
   ]
 };

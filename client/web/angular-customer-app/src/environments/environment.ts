@@ -47,3 +47,5 @@ export const environment = {
   viewCodeLink: bootstrapData?.viewCodeLink || '',
   viewCodeMessage: bootstrapData?.viewCodeMessage || '',
 };
+
+export const geminiModel = "gemini-2.5-flash-preview-04-17";
