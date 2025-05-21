@@ -1,16 +1,20 @@
-import { Content } from "@angular/fire/ai";
+import { Content } from '@angular/fire/ai';
 
 export class ChatHistory {
-    messages: Content[];
-    constructor() {
-        this.messages = [];
-    }
+  messages: Content[];
+  constructor() {
+    this.messages = [];
+  }
 
-    addMessage(part: Content[]) {
-        this.messages.push(...part);
-    }
+  addMessage(message: Content): void {
+    this.messages.push(message);
+  }
 
-    getMessages(): Content[] {
-        return this.messages;
-    }
+  addMessages(part: Content[]) {
+    this.messages.push(...part);
+  }
+
+  getMessages(): Content[] {
+    return this.messages;
+  }
 }

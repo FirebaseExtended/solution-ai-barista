@@ -127,6 +127,14 @@ export const suggestResponses = (responses: string[]) => {
     return {responsesSet: true};
 }
 
+export const featureItem = (itemName: string) => {
+    console.info('[feature_item]', { itemName });
+    if (menuAllBeverages.includes(itemName)) {
+      updateState({ ...getAgentState(), featuredItemName: itemName });
+      return { itemFeatured: itemName, success: true };
+    }
+    return { itemFeatured: null, success: false, error: "Item not found in menu." };
+  };
 
 export const orderingTool: FunctionDeclarationsTool = {
     functionDeclarations: [
@@ -232,6 +240,19 @@ export const orderingTool: FunctionDeclarationsTool = {
         {
             name: 'recommendation_agent',
             description: 'A way for the barista agent to recommend drinks to the user.',
+        },
+        {
+            name: 'feature_item',
+            description: 'Use this function to highlight a specific menu item when you are describing it or making a singular recommendation. This will allow an image of the item to be shown to the customer alongside your text. Call this function *before* calling `suggest_responses`. Only call this for a single item you are focusing on in your response.',
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                itemName: Schema.enumString({
+                  enum: menuAllBeverages,
+                  description: 'The exact name of the menu item to feature from the menu.'
+                }),
+              }
+            }
         }
     ]
 }
@@ -256,6 +277,8 @@ export function handleOrderingFunctionCall(callName: string, callArgs: any) {
             return suggestResponses(callArgs.responses);
         case 'recommendation_agent':
             return getBaristaRecommendation();
+        case 'feature_item':
+            return featureItem(callArgs.itemName);
         default:
             throw new Error(`Unknown function call: ${callName}`);
     }

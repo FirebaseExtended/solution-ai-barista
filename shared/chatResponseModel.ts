@@ -49,4 +49,9 @@ export interface ChatResponseModel {
    * The order for user confirmation. An order consists of one or more beverages.
    */
   order: BeverageModel[];
+
+  /**
+   * The image url of the current inquired or recommended item.
+   */
+  featuredItemImage?: string;
 }

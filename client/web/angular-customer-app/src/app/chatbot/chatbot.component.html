@@ -63,8 +63,25 @@
             }
           </div>
         </div>
-        } @if (entry.role === 'agent') {
-        <div class="message barista">
+        } @if (entry.role === 'agent') { 
+          @if (entry.featuredItemImage) {
+            <div class="message barista image-bubble">
+              <div class="message-icon-container">
+                <mat-icon class="barista-icon">coffee</mat-icon>
+              </div>
+              <div class="message-text-container image-only-container">
+                <div class="featured-item-image-container">
+                  <img
+                    [src]="entry.featuredItemImage"
+                    alt="Featured item"
+                    class="featured-item-image"
+                  />
+                </div>
+              </div>
+            </div>
+            }
+          @if (entry.text && entry.text.trim()!=='') {
+        <div class="message barista text-bubble">
           <div class="message-icon-container">
             <mat-icon class="barista-icon">coffee</mat-icon>
           </div>
@@ -72,7 +89,7 @@
             {{ entry.text }}
           </div>
         </div>
-        } }
+        }  } }
       </div>
     </div>
     <div class="suggestions-container">

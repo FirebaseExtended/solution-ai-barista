@@ -1,29 +1,30 @@
-import { BeverageModel } from "../../../../../../../shared";
+import { BeverageModel } from '../../../../../../../shared';
 
 let agentState: AgentState = {
-    suggestedResponses: [],
-    inProgressOrder: [],
-    orderSubmitted: false,
-    readyForSubmission: false,
+  suggestedResponses: [],
+  inProgressOrder: [],
+  orderSubmitted: false,
+  readyForSubmission: false,
+  featuredItemName: null,
 };
 
-export const updateState = (state: {
-    suggestedResponses: string[],
-    inProgressOrder: BeverageModel[],
-    orderSubmitted: boolean,
-    readyForSubmission: boolean,
-}) => {
-    agentState = state;
-}
+export const updateState = (state: Partial<AgentState>) => {
+  agentState = { ...agentState, ...state };
+};
 
 export const getAgentState = () => {
-    return agentState;
-}
+  return agentState;
+};
+
+export const clearLastImageItem = () => {
+  agentState = { ...agentState, featuredItemName: null };
+};
 
 export interface AgentState {
-    suggestedResponses: string[];
-    inProgressOrder: BeverageModel[];
-    orderSubmitted: boolean;
-    readyForSubmission: boolean;
-    // lastInterrupt?: ToolRequestPart
+  suggestedResponses: string[];
+  inProgressOrder: BeverageModel[];
+  orderSubmitted: boolean;
+  readyForSubmission: boolean;
+  // lastInterrupt?: ToolRequestPart
+  featuredItemName?: string | null;
 }

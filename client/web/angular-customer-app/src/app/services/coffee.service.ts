@@ -26,17 +26,20 @@ import { geminiModel } from '../../environments/environment';
 import { LoginService } from './login.service';
 import { AI, Content, getGenerativeModel, Part } from '@angular/fire/ai';
 import { orderingAgentInfo } from './agents/orderingAgent/orderingAgent';
-import { clearOrder, handleOrderingFunctionCall, orderingTool } from './agents/orderingAgent/orderTools';
-import { getAgentState } from './state/agentState';
+import {
+  clearOrder,
+  handleOrderingFunctionCall,
+  orderingTool,
+} from './agents/orderingAgent/orderTools';
+import { getAgentState, updateState } from './state/agentState';
 import { ChatHistory } from './state/chatHistory';
 import { SubmittedOrderStore } from './stores/submittedOrderStore';
 import { generateName } from './utils/submissionUtils';
 import { Firestore, getFirestore } from '@angular/fire/firestore';
+import { getMenuItemImage } from './utils/menuUtils';
 
 // const chatUrl = `${environment.backendUrl}/chat`;
 // const approveUrl = `${environment.backendUrl}/approveOrder`;
-
-
 
 @Injectable({
   providedIn: 'root',
@@ -45,18 +48,18 @@ export class CoffeeService {
   private loginService: LoginService = inject(LoginService);
   private ai = inject(AI);
   private firestore = inject(Firestore);
-  private generativeModel = getGenerativeModel(this.ai, {model: geminiModel});
+  private generativeModel = getGenerativeModel(this.ai, { model: geminiModel });
   private chatMessages = new ChatHistory();
-  constructor() { }
+  constructor() {}
 
   /**
    * Create Http options that include the latest id token.
    */
   // private getHttpOptions() {
   //   const idToken = this.loginService.idToken();
-  //   const appCheckToken = this.loginService.appCheckToken();    
-     
-  //   return { 
+  //   const appCheckToken = this.loginService.appCheckToken();
+
+  //   return {
   //     headers: new HttpHeaders({
   //       'X-Firebase-AppCheck': appCheckToken,
   //       'Authorization': `Bearer ${idToken}`,
@@ -68,58 +71,95 @@ export class CoffeeService {
   //   };
   // }
 
-  private async generateResponse(parts: Part[], currentStep: number = 0, maxGenSteps: number = 15) {
-    this.generativeModel.generationConfig = {...this.generativeModel.generationConfig, temperature: orderingAgentInfo.config.temperature};
+  private async generateResponse(
+    parts: Part[],
+    currentStep: number = 0,
+    maxGenSteps: number = 15
+  ): Promise<any> {
+    this.generativeModel.generationConfig = {
+      ...this.generativeModel.generationConfig,
+      temperature: orderingAgentInfo.config.temperature,
+    };
     const chatSession = this.generativeModel.startChat({
-      systemInstruction: {role: 'system', parts: [{text: orderingAgentInfo.prompt}]} as Content,
+      systemInstruction: {
+        role: 'system',
+        parts: [{ text: orderingAgentInfo.prompt }],
+      } as Content,
       tools: [orderingTool],
-      history: this.chatMessages.getMessages()
+      history: this.chatMessages.getMessages(),
     });
 
     let generationResponse = await chatSession.sendMessage(parts);
-    const functionCalls = generationResponse.response.functionCalls()
-    if(functionCalls !== undefined) {
-      const functionResults: {functionResponse: {name: string, response: any}}[] = [];
+    const functionCalls = generationResponse.response.functionCalls();
+    if (functionCalls !== undefined && functionCalls.length > 0) {
+      const functionResults: {
+        functionResponse: { name: string; response: any };
+      }[] = [];
+      let hasNonStateUpdatingCall = false;
+
       for (const call of functionCalls) {
         const result = handleOrderingFunctionCall(call.name, call.args);
-        if(call.name !== "suggest_responses") {
-          functionResults.push({functionResponse: {name: call.name, response: result}});
+        functionResults.push({
+          functionResponse: { name: call.name, response: result },
+        });
+        if (call.name !== 'suggest_responses' && call.name !== 'feature_item') {
+          hasNonStateUpdatingCall = true;
         }
       }
-      if(currentStep<=maxGenSteps && functionResults.length > 0) {
-        generationResponse = await this.generateResponse(functionResults, currentStep + 1, maxGenSteps);
+      if (currentStep < maxGenSteps) {
+        return this.generateResponse(functionResults, currentStep + 1, maxGenSteps);
       }
     }
     return generationResponse;
   }
-  
+
   sendMessage(request: ChatMessageModel): Observable<ChatResponseModel> {
     const parts: Array<Part> = new Array();
-    parts.push({text: request.text});
-    if(request.media) {
-      parts.push({inlineData: {data: request.media.downloadUrl, mimeType: request.media.contentType}});
+    parts.push({ text: request.text });
+    if (request.media && request.media.downloadUrl) {
+      const base64Parts = request.media.downloadUrl.split(',');
+      if (base64Parts.length === 2) {
+        parts.push({ inlineData: { data: base64Parts[1], mimeType: request.media.contentType } });
+      } else {
+        console.warn("Media downloadUrl doesn't seem to be a valid data URL:", request.media.downloadUrl);
+      }
     }
+    updateState({ ...getAgentState(), featuredItemName: null });
 
-    this.generativeModel.generationConfig = {...this.generativeModel.generationConfig, temperature: orderingAgentInfo.config.temperature};
+    this.generativeModel.generationConfig = {
+      ...this.generativeModel.generationConfig,
+      temperature: orderingAgentInfo.config.temperature,
+    };
 
-    const generationResponse = from(this.generateResponse(parts));
-    return generationResponse.pipe(
+    const generationPromise = this.generateResponse(parts);
+    return from(generationPromise).pipe(
       catchError((err) => {
         throw err.error;
       }),
       map((data) => {
+        const agentCurrentState = getAgentState();
+        let imageUrl: string | undefined = undefined;
+
+        if (agentCurrentState.featuredItemName && getMenuItemImage(agentCurrentState.featuredItemName)) {
+          imageUrl = getMenuItemImage(agentCurrentState.featuredItemName);
+        }
+
         const chatResponse: ChatResponseModel = {
           role: 'agent',
           text: data.response.text(),
           suggestedResponses: getAgentState().suggestedResponses || [],
           readyForSubmission: getAgentState().readyForSubmission || false,
           orderSubmitted: getAgentState().orderSubmitted || false,
-          order: getAgentState().inProgressOrder || []
+          order: getAgentState().inProgressOrder || [],
+          featuredItemImage: imageUrl,
         };
+        this.chatMessages.addMessage({ role: 'user', parts: parts });
+        if (data.response) {
+            this.chatMessages.addMessage(data.response.candidates[0].content); // Add model's response to history
+        }
         return chatResponse;
       })
     );
-
 
     // const generationResponse = from(chatSession.sendMessage(parts));
     // return generationResponse.pipe(
@@ -157,14 +197,12 @@ export class CoffeeService {
     //     return chatResponse;
     //   })
     // );
-    
 
-    // this.generativeModel.ch(parts).then((gcr) => 
+    // this.generativeModel.ch(parts).then((gcr) =>
     //   {
     //     gcr.response.text
     //   }
     // );
-
 
     // return this.http.post<ChatResponseModel>(chatUrl, request, this.getHttpOptions())
     // .pipe(
@@ -178,8 +216,9 @@ export class CoffeeService {
     // );
   }
 
-  sendOrderApproval(request: OrderConfirmationMessage): Observable<ChatResponseModel>{
-
+  sendOrderApproval(
+    request: OrderConfirmationMessage
+  ): Observable<ChatResponseModel> {
     // const chatResponse: ChatResponseModel = {
     //   role: 'agent',
     //   text: "Order submitted",
@@ -189,10 +228,12 @@ export class CoffeeService {
     //   order: getAgentState().inProgressOrder || []
     // };
 
-    return from(new SubmittedOrderStore(
-      this.loginService.idToken(), getFirestore()
-    )
-    .submitOrder(generateName(), getAgentState().inProgressOrder || [])).pipe(
+    return from(
+      new SubmittedOrderStore(
+        this.loginService.idToken(),
+        getFirestore()
+      ).submitOrder(generateName(), getAgentState().inProgressOrder || [])
+    ).pipe(
       catchError((err) => {
         throw err.error;
       }),
@@ -203,7 +244,8 @@ export class CoffeeService {
           suggestedResponses: [],
           readyForSubmission: true,
           orderSubmitted: true,
-          order: getAgentState().inProgressOrder || []
+          order: getAgentState().inProgressOrder || [],
+          featuredItemImage: undefined
         };
         clearOrder();
         return x;
@@ -218,6 +260,5 @@ export class CoffeeService {
     //     return data;
     //   })
     // );
-
   }
 }
