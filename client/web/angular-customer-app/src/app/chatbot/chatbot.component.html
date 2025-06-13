@@ -59,12 +59,30 @@
           <div class="message-text-container">
             {{ entry.text }}
             @if (entry.media && entry.media.base64Data) {
-            <img [src]="'data:image/png;base64, ' + entry.media.base64Data" alt="User media" />
+            <img
+              [src]="'data:image/png;base64,' + entry.media.base64Data"
+              alt="User media"
+            />
             }
           </div>
         </div>
-        } @if (entry.role === 'agent') {
-        <div class="message barista">
+        } @if (entry.role === 'agent') { @if (entry.featuredItemImage) {
+        <div class="message barista image-bubble">
+          <div class="message-icon-container">
+            <mat-icon class="barista-icon">coffee</mat-icon>
+          </div>
+          <div class="message-text-container image-only-container">
+            <div class="featured-item-image-container">
+              <img
+                [src]="entry.featuredItemImage"
+                alt="Featured item"
+                class="featured-item-image"
+              />
+            </div>
+          </div>
+        </div>
+        } @if (entry.text && entry.text.trim()!=='') {
+        <div class="message barista text-bubble">
           <div class="message-icon-container">
             <mat-icon class="barista-icon">coffee</mat-icon>
           </div>
@@ -72,7 +90,7 @@
             {{ entry.text }}
           </div>
         </div>
-        } }
+        } } }
       </div>
     </div>
     <div class="suggestions-container">
@@ -104,40 +122,37 @@
           placeholder="Anything else?"
         />
         @if (mediaStorageService.media()) {
-          <div class="image-preview-container">
-            <img
-              [src]="'data:image/png;base64, ' + mediaStorageService.media()?.base64Data"
-              class="media-preview-in-bar"
-              alt="Preview"
-            />
-            <button
-              mat-icon-button
-              class="remove-preview-button"
-              type="button"
-              (click)="this.mediaStorageService.clearMedia()" 
-              matTooltip="Remove image">
-              <mat-icon>close</mat-icon>
-            </button>
-          </div>
-          }
+        <div class="image-preview-container">
+          <img
+            [src]="
+              'data:image/png;base64, ' +
+              mediaStorageService.media()?.base64Data
+            "
+            class="media-preview-in-bar"
+            alt="Preview"
+          />
+          <button
+            mat-icon-button
+            class="remove-preview-button"
+            type="button"
+            (click)="this.mediaStorageService.clearMedia()"
+            matTooltip="Remove image"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        }
       </mat-form-field>
 
       <button
         mat-icon-button
         class="action-button add-btn"
         type="button"
-        (click)="file_input.click()"
+        (click)="openImageCropModal()"
         [disabled]="chatService.loading()"
-        matTooltip="Add attachment"
+        matTooltip="Select a Featured Coffee"
       >
         <mat-icon>add</mat-icon>
-        <input
-          #file_input
-          type="file"
-          accept="image/*"
-          style="display: none"
-          (change)="setFileData($event)"
-        />
       </button>
 
       <button

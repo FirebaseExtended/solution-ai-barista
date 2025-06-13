@@ -100,7 +100,7 @@ export class ChatService {
 
     this.addToChatHistory(chat);
     this.suggestedResponses.set([])
-
+console.log(chat,"ddd");
     this.coffeeService.sendMessage(chat)
     .subscribe({
       next: (res: ChatResponseModel) => this.processChatResponse(res),

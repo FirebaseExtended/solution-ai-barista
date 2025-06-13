@@ -24,19 +24,28 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, catchError, from, map } from 'rxjs';
 import { geminiModel } from '../../environments/environment';
 import { LoginService } from './login.service';
-import { AI, Content, getGenerativeModel, Part } from '@angular/fire/ai';
+import {
+  AI,
+  Content,
+  GenerativeModel,
+  getGenerativeModel,
+  Part,
+} from '@angular/fire/ai';
 import { orderingAgentInfo } from './agents/orderingAgent/orderingAgent';
-import { clearOrder, handleOrderingFunctionCall, orderingTool } from './agents/orderingAgent/orderTools';
-import { getAgentState } from './state/agentState';
+import {
+  clearOrder,
+  handleOrderingFunctionCall,
+  orderingTool,
+} from './agents/orderingAgent/orderTools';
+import { getAgentState, updateState } from './state/agentState';
 import { ChatHistory } from './state/chatHistory';
 import { SubmittedOrderStore } from './stores/submittedOrderStore';
 import { generateName } from './utils/submissionUtils';
 import { Firestore, getFirestore } from '@angular/fire/firestore';
+import { getMenuItemImage } from './utils/menuUtils';
 
 // const chatUrl = `${environment.backendUrl}/chat`;
 // const approveUrl = `${environment.backendUrl}/approveOrder`;
-
-
 
 @Injectable({
   providedIn: 'root',
@@ -45,90 +54,116 @@ export class CoffeeService {
   private loginService: LoginService = inject(LoginService);
   private ai = inject(AI);
   private firestore = inject(Firestore);
-  private generativeModel = getGenerativeModel(this.ai, {model: geminiModel});
+  private generativeModel: GenerativeModel;
   private chatMessages = new ChatHistory();
-  constructor() { }
 
-  /**
-   * Create Http options that include the latest id token.
-   */
-  // private getHttpOptions() {
-  //   const idToken = this.loginService.idToken();
-  //   const appCheckToken = this.loginService.appCheckToken();    
-     
-  //   return { 
-  //     headers: new HttpHeaders({
-  //       'X-Firebase-AppCheck': appCheckToken,
-  //       'Authorization': `Bearer ${idToken}`,
-  //       'Content-Type': 'application/json',
-  //       'Access-Control-Allow-Origin': '*',
-  //       Allow: '*'
-  //     }),
-  //     withCredentials: true
-  //   };
-  // }
-
-  private async generateResponse(parts: Part[], currentStep: number = 0, maxGenSteps: number = 15) {
-    this.generativeModel.generationConfig = {...this.generativeModel.generationConfig, temperature: orderingAgentInfo.config.temperature};
-    const chatSession = this.generativeModel.startChat({
-      systemInstruction: {role: 'system', parts: [{text: orderingAgentInfo.prompt}]} as Content,
+  constructor() {
+    // Initialize the generative model once
+    this.generativeModel = getGenerativeModel(this.ai, {
+      model: geminiModel,
+      generationConfig: {
+        temperature: orderingAgentInfo.config.temperature,
+      },
       tools: [orderingTool],
-      history: this.chatMessages.getMessages()
     });
-
-    let generationResponse = await chatSession.sendMessage(parts);
-    const functionCalls = generationResponse.response.functionCalls()
-    if(functionCalls !== undefined) {
-      const functionResults: {functionResponse: {name: string, response: any}}[] = [];
-      for (const call of functionCalls) {
-        const result = handleOrderingFunctionCall(call.name, call.args);
-        if(call.name == "submit_order") {
-         break; 
-        }
-        if(call.name !== "suggest_responses") {
-          functionResults.push({functionResponse: {name: call.name, response: result}});
-        }
-      }
-      if(currentStep<=maxGenSteps && functionResults.length > 0) {
-        generationResponse = await this.generateResponse(functionResults, currentStep + 1, maxGenSteps);
-      }
-    }
-    return generationResponse;
   }
-  
+
   sendMessage(request: ChatMessageModel): Observable<ChatResponseModel> {
-    const parts: Array<Part> = new Array();
-    parts.push({text: request.text});
-    if (request.media && request.media.base64Data && request.media.mimeType) {
-      parts.push({
-        inlineData: {
-          data: request.media.base64Data,
-          mimeType: request.media.mimeType,
+    const processRequest = async (): Promise<ChatResponseModel> => {
+      const parts: Part[] = [{ text: request.text }];
+      if (request.media?.base64Data && request.media.mimeType) {
+        parts.push({
+          inlineData: {
+            data: request.media.base64Data,
+            mimeType: request.media.mimeType,
+          },
+        });
+      }
+
+      const chatSession = this.generativeModel.startChat({
+        systemInstruction: {
+          role: 'system',
+          parts: [{ text: orderingAgentInfo.prompt }],
         },
+        history: this.chatMessages.getMessages(),
       });
-      console.log('Image part prepared for ai');
-    }
 
-    this.generativeModel.generationConfig = {...this.generativeModel.generationConfig, temperature: orderingAgentInfo.config.temperature};
+      let generationResponse = await chatSession.sendMessage(parts);
+      const MAX_TOOL_CALLING_STEPS = 5;
+      let currentStep = 0;
 
-    const generationResponse = from(this.generateResponse(parts));
-    return generationResponse.pipe(
-      catchError((err) => {
-        throw err.error;
-      }),
-      map((data) => {
-        const chatResponse: ChatResponseModel = {
-          role: 'agent',
-          text: data.response.text(),
-          suggestedResponses: getAgentState().suggestedResponses || [],
-          readyForSubmission: getAgentState().readyForSubmission || false,
-          orderSubmitted: getAgentState().orderSubmitted || false,
-          order: getAgentState().inProgressOrder || []
-        };
-        return chatResponse;
+      while (currentStep < MAX_TOOL_CALLING_STEPS) {
+        const functionCalls = generationResponse.response.functionCalls();
+        if (!functionCalls || functionCalls.length === 0) {
+          break;
+        }
+
+        const functionResults: Part[] = [];
+        let stopLoop = false;
+
+        // Define which tools modify the order and should end the turn.
+        const turnEndingTools = [
+          'add_to_order',
+          'remove_item',
+          'update_item',
+          'clear_order',
+          'submit_order',
+        ];
+
+        for (const call of functionCalls) {
+          const result = handleOrderingFunctionCall(call.name, call.args);
+          if (turnEndingTools.includes(call.name)) {
+            stopLoop = true;
+          }
+
+          functionResults.push({
+            functionResponse: { name: call.name, response: result },
+          });
+        }
+
+        generationResponse = await chatSession.sendMessage(functionResults);
+        if (stopLoop || generationResponse.response.text()) {
+          break;
+        }
+
+        currentStep++;
+      }
+
+      const agentCurrentState = getAgentState();
+      const imageUrl = agentCurrentState.featuredItemName
+        ? getMenuItemImage(agentCurrentState.featuredItemName)
+        : undefined;
+
+      const chatResponse: ChatResponseModel = {
+        role: 'agent',
+        text: generationResponse.response.text(),
+        suggestedResponses: agentCurrentState.suggestedResponses || [],
+        readyForSubmission: agentCurrentState.readyForSubmission || false,
+        orderSubmitted: agentCurrentState.orderSubmitted || false,
+        order: agentCurrentState.inProgressOrder || [],
+        featuredItemImage: imageUrl,
+      };
+
+      updateState({
+        ...getAgentState(),
+        featuredItemName: null,
+        suggestedResponses: [],
+      });
+      this.chatMessages.setMessages(await chatSession.getHistory());
+      return chatResponse;
+    };
+
+    return from(processRequest()).pipe(
+      catchError((error) => {
+        console.error('An error occurred during the chat process:', error);
+        updateState({
+          ...getAgentState(),
+          featuredItemName: null,
+          suggestedResponses: [],
+        });
+        throw error.error || new Error('Failed to get a response from Gemini.');
       })
     );
-
 
     // const generationResponse = from(chatSession.sendMessage(parts));
     // return generationResponse.pipe(
@@ -166,14 +201,12 @@ export class CoffeeService {
     //     return chatResponse;
     //   })
     // );
-    
 
-    // this.generativeModel.ch(parts).then((gcr) => 
+    // this.generativeModel.ch(parts).then((gcr) =>
     //   {
     //     gcr.response.text
     //   }
     // );
-
 
     // return this.http.post<ChatResponseModel>(chatUrl, request, this.getHttpOptions())
     // .pipe(
@@ -187,8 +220,9 @@ export class CoffeeService {
     // );
   }
 
-  sendOrderApproval(request: OrderConfirmationMessage): Observable<ChatResponseModel>{
-
+  sendOrderApproval(
+    request: OrderConfirmationMessage
+  ): Observable<ChatResponseModel> {
     // const chatResponse: ChatResponseModel = {
     //   role: 'agent',
     //   text: "Order submitted",
@@ -197,37 +231,50 @@ export class CoffeeService {
     //   orderSubmitted: request.orderApproved,
     //   order: getAgentState().inProgressOrder || []
     // };
+    if (!request.orderApproved) {
+      return this.sendMessage({
+        role: 'user',
+        text: 'Actually, I need to make some changes to my order.',
+      });
+    }
 
-    return from(new SubmittedOrderStore(
-      this.loginService.idToken(), getFirestore()
-    )
-    .submitOrder(generateName(), getAgentState().inProgressOrder || [])).pipe(
-      catchError((err) => {
-        throw err.error;
-      }),
-      map((data) => {
-        const x: ChatResponseModel = {
+    const submit = async (): Promise<ChatResponseModel> => {
+      const orderToSubmit = getAgentState().inProgressOrder || [];
+      if (orderToSubmit.length === 0) {
+        return {
           role: 'agent',
-          text: `Order submitted as ${data}`,
+          text: 'It looks like your order is empty! What can I get for you?',
           suggestedResponses: [],
-          readyForSubmission: true,
-          orderSubmitted: true,
-          order: getAgentState().inProgressOrder || []
+          readyForSubmission: false,
+          orderSubmitted: false,
+          order: [],
         };
-        const result = clearOrder();
-        console.log(result);
-        return x;
+      }
+
+      const orderName = generateName();
+      const submittedOrderStore = new SubmittedOrderStore(
+        this.loginService.idToken(),
+        this.firestore
+      );
+
+      await submittedOrderStore.submitOrder(orderName, orderToSubmit);
+      clearOrder();
+
+      return {
+        role: 'agent',
+        text: `Excellent! Your order has been submitted as "${orderName}". We'll have it ready for you shortly.`,
+        suggestedResponses: [],
+        readyForSubmission: false,
+        orderSubmitted: true,
+        order: [], 
+      };
+    };
+
+    return from(submit()).pipe(
+      catchError((err) => {
+        console.error('An error occurred during order submission:', err);
+        throw err.error || new Error('Failed to submit the order.');
       })
     );
-
-    // return from (new Promise<ChatResponseModel>((resolve, reject) => resolve(chatResponse))).pipe(
-    //   catchError((err) => {
-    //     throw err.error;
-    //   }),
-    //   map((data: ChatResponseModel): ChatResponseModel => {
-    //     return data;
-    //   })
-    // );
-
   }
 }

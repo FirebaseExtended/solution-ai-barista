@@ -23,7 +23,7 @@ export interface ChatResponseModel {
   /**
    * Role of the message (agent or user)
    */
-  role: 'agent';
+  role: "agent";
 
   /**
    * Main message content of the response.
@@ -49,4 +49,9 @@ export interface ChatResponseModel {
    * The order for user confirmation. An order consists of one or more beverages.
    */
   order: BeverageModel[];
+
+  /**
+   * The image url of the current inquired or recommended item.
+   */
+  featuredItemImage?: string;
 }

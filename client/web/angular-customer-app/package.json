@@ -23,6 +23,7 @@
     "@angular/router": "^19.2.11",
     "@google/generative-ai": "^0.24.1",
     "marked": "^15.0.12",
+    "ngx-image-cropper": "^9.1.5",
     "ngx-markdown": "^19.1.1",
     "rxjs": "~7.8.2",
     "tslib": "^2.8.1",
