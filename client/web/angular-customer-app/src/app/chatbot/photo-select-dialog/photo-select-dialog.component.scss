@@ -1,0 +1,24 @@
+.photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+.selectable-photo {
+  flex: 0 1 45%;
+  margin: 4px;
+  max-width: 200px;
+
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  object-fit: cover;
+}
+
+.selectable-photo:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}

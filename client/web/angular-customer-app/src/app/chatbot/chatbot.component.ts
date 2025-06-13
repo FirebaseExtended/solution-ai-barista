@@ -34,6 +34,8 @@ import { ChatService } from '../services/chat.service';
 import { MediaStorageService } from '../services/mediaStorage.service';
 import { OrderDialog } from './order-dialog/order-dialog.component';
 import { getOrder } from '../services/agents/orderingAgent/orderTools';
+import { PhotoSelectDialogComponent } from './photo-select-dialog/photo-select-dialog.component';
+import { promptImages } from '../services/utils/menuUtils';
 
 @Component({
   selector: 'app-chatbot',
@@ -75,8 +77,9 @@ export class ChatbotComponent {
 
     effect(() => {
       if (this.chatService.history().length === 0) {
-        this.chatFormControl.setValue("What is the recommended coffee of the day?")
-        this.ask(this.input());
+        // this.chatFormControl.setValue("What is the recommended coffee of the day?")
+        // this.ask(this.input());
+        this.openPhotoSelectionDialog()
       }
     });
 
@@ -128,23 +131,52 @@ export class ChatbotComponent {
     }
   }
 
-  setFileData(event: Event): void {
-    const eventTarget: HTMLInputElement | null =
-      event.target as HTMLInputElement | null;
+  // setFileData(event: Event): void {
+  //   const eventTarget: HTMLInputElement | null =
+  //     event.target as HTMLInputElement | null;
 
-    if (eventTarget?.files?.[0]) {
-      const file: File = eventTarget.files[0];
-      this.mediaStorageService.processMedia(file)
-        .then(() => {
-          console.log('File processed and will be sent with the next message.');
-        })
-        .catch((error) => {
-          console.error('Error processing file for chat:', error);
-        });
-      if (eventTarget) {
-        eventTarget.value = '';
+  //   if (eventTarget?.files?.[0]) {
+  //     const file: File = eventTarget.files[0];
+  //     this.mediaStorageService.processMedia(file)
+  //       .then(() => {
+  //         console.log('File processed and will be sent with the next message.');
+  //       })
+  //       .catch((error) => {
+  //         console.error('Error processing file for chat:', error);
+  //       });
+  //     if (eventTarget) {
+  //       eventTarget.value = '';
+  //     }
+  //   }
+  // }
+
+  openPhotoSelectionDialog(): void {
+    const weatherKeys = ['Snowy', 'Rainy'];
+    const photosForDialog = [...promptImages].map(([name, dataUri]) => ({
+      alt: name, 
+      url: dataUri 
+    }));
+
+    const dialogRef = this.dialog.open(PhotoSelectDialogComponent, {
+      width: 'clamp(300px, 80vw, 500px)',
+      data: {
+        photos: photosForDialog
       }
-    }
+    });
+
+    dialogRef.afterClosed().subscribe((result: { url: string; alt: string } | undefined) => {
+      if (result && result.url && result.alt) {
+        this.mediaStorageService.processDataUri(result.url);
+        let promptText: string;
+
+        if (weatherKeys.includes(result.alt)) {
+          promptText = 'What would you recommend in this weather?';
+        } else {
+          promptText = 'What do you recommend for this occasion?';
+        }
+        this.chatFormControl.setValue(promptText);
+      }
+    });
   }
 
   confirmOrder() {

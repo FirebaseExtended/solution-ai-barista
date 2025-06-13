@@ -123,22 +123,14 @@
       </mat-form-field>
 
       <button
-        mat-icon-button
-        class="action-button add-btn"
-        type="button"
-        (click)="file_input.click()"
-        [disabled]="chatService.loading()"
-        matTooltip="Add attachment"
-      >
-        <mat-icon>add</mat-icon>
-        <input
-          #file_input
-          type="file"
-          accept="image/*"
-          style="display: none"
-          (change)="setFileData($event)"
-        />
-      </button>
+      mat-icon-button
+      class="action-button add-btn"
+      type="button"
+      (click)="openPhotoSelectionDialog()"  [disabled]="chatService.loading()"
+      matTooltip="Attach a photo"
+    >
+      <mat-icon>add_photo_alternate</mat-icon> 
+    </button>
 
       <button
         mat-icon-button

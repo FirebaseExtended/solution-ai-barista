@@ -29,10 +29,23 @@ const defaultRecommendation = {
 //     return;
 // }
 
-export const getBaristaRecommendation = () => {
-    console.info('[get_barista_recommendation]');
+export const getBaristaRecommendation = (
+    drink: string,
+    modifiers: string[] = []
+  ): Recommendation => {
+    console.info('[get_barista_recommendation]', {
+      drink: drink,
+      modifiers: modifiers,
+    });
 
-    let recommendation: Recommendation | undefined;
+    const recommendation: Recommendation = {
+        name: drink ?? defaultRecommendation.name,
+        modifiers: modifiers ?? defaultRecommendation.modifiers,
+      };
+    
+      console.info('[get_barista_recommendation] Returning barista recommendation.', {
+        recommendation: recommendation,
+      });
 
     // if (process.env["LOCAL_RECOMMENDATION_SERVICE"]) {
     //     recommendation = await loadRecommendation();
@@ -42,7 +55,6 @@ export const getBaristaRecommendation = () => {
     //     recommendation = defaultRecommendation;
     //     console.warn('[get_barista_recommendation] Falling back to local recommendation');
     // }
-    recommendation = defaultRecommendation;
     console.info('[get_barista_recommendation] Returning barista recommendation.', { recommendation: recommendation });
     return recommendation;
 }

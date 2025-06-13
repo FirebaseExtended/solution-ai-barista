@@ -62,6 +62,26 @@ export class MediaStorageService {
     });
   }
 
+  processDataUri(dataUri: string): void {
+    try {
+      const match = dataUri.match(/^data:(.+);base64,(.+)$/);
+
+      if (!match) {
+        throw new Error('Invalid data URI format provided.');
+      }
+
+      const mimeType = match[1];
+      const base64Data = match[2];
+
+      this.media.set({ base64Data, mimeType });
+      console.log('Image from data URI processed and stored for the next message.');
+
+    } catch (error) {
+      console.error('Error processing data URI:', error);
+      this.clearMedia();
+    }
+  }
+
   clearMedia(): void {
     this.media.set(null);
   }

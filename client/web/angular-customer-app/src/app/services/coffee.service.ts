@@ -215,7 +215,6 @@ export class CoffeeService {
           order: getAgentState().inProgressOrder || []
         };
         const result = clearOrder();
-        console.log(result);
         return x;
       })
     );

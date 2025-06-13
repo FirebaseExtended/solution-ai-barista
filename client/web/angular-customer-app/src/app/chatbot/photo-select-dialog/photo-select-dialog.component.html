@@ -1,0 +1,11 @@
+<h2 mat-dialog-title>Describe the weather or mood</h2>
+<mat-dialog-content class="photo-grid">
+  <div class="photo-container">
+    @for (photo of data.photos; track photo.url) {
+      <img [src]="photo.url" [alt]="photo.alt" (click)="selectPhoto(photo)" class="selectable-photo"/>
+    }
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onNoClick()">Cancel</button>
+</mat-dialog-actions>
