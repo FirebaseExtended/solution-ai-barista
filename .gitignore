@@ -6,3 +6,6 @@ node_modules
 # Firebase files
 .firebaserc
 .firebase
+
+# Client configuration file 
+client/web/angular-customer-app/src/environments/environment.development.ts
