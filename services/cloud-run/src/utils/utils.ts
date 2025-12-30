@@ -18,8 +18,6 @@ import ChatError from '../types/ChatError';
 import { BeverageModel, ErrorResponse } from '@ai-barista/shared';
 import { TextResponse } from '@ai-barista/shared';
 import { UserFacingError } from 'genkit';
-import { ClientError } from '@google-cloud/vertexai';
-
 
 /**
  * Creates an ErrorResponse object with the given error message and a 500 error code.
@@ -83,16 +81,16 @@ export function createChatErrorFromError(error: any): ChatError {
     return new ChatError(error.code, error.message, error);
   }
 
-  if (error instanceof ClientError && error.stackTrace) {
-    // A ClientError from VertexAI may have some additional details in its stacktrace.
-    const statusCode = (error.stackTrace as any).code || 500;
+  if (error.stackTrace && error.stackTrace.message) {
+    // A (client) error with a stacktrace and message has more information than a general error.
+    const statusCode = error.stackTrace.code || 500;
     return new ChatError(statusCode, error.stackTrace.message, error);
   }
 
   if (error instanceof Error) {
     return new ChatError(500, error.message, error);
   }
-  
+
   // Fallback to return a generic error.
   return new ChatError(500, 'An error occured', error);
 
