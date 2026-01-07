@@ -58,7 +58,7 @@
           # Run "npm run dev" with PORT set to Firebase Studio's defined port for previews,
           # and show it in the web preview panel
           cwd = "client/web/angular-customer-app";
-          command = ["npm" "run" "start" "--" "--port" "$PORT" "--host" "0.0.0.0" "--disable-host-check"];
+          command = ["npm" "run" "start" "--" "--port" "$PORT" "--host" "0.0.0.0"];
           manager = "web";
           env = {
             # Environment variables to set for your server
