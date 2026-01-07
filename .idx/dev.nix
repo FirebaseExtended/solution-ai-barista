@@ -36,10 +36,14 @@
         npm-install-functions = "cd services/functions && npm ci --no-audit --prefer-offline --no-progress --timing";
 
          default.openFiles = [
+          # Open the configuration file that needs to be updated
+          "client/web/angular-customer-app/src/environments/environment.development.ts"
           # Open the entry point for the backend API.
           "services/cloud-run/src/index.ts"
           # Open the entry point for the Angular Client app.
-          "src/app/app.component.ts"
+          "client/web/angular-customer-app/src/app/chatbot/chatbot.component.ts"
+          # Open the README
+          "README.md"
          ];
       };
       # Runs when the workspace is (re)started
