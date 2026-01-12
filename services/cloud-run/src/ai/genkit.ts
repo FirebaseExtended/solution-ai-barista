@@ -47,8 +47,8 @@ const geminiSafetySettings = [
 export const ai = genkit({
     // Enable the Vertex AI plugin.
     plugins: [vertexAI({ location: 'us-central1', })],
-    // Select a Gemini Pro model.
+    // Select a Gemini model and set the safety settings.
     model: vertexAI.model('gemini-2.5-flash').withConfig({
-        safetySettings: geminiSafetySettings as any,
+        safetySettings: [...geminiSafetySettings],
     }),
 });
