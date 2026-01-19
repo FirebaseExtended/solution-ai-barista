@@ -2,12 +2,12 @@
 # see: https://developers.google.com/idx/guides/customize-idx-env
 { pkgs, ... }: {
   # Which nixpkgs channel to use.
-  channel = "stable-24.05"; # or "unstable"
+  channel = "stable-25.05"; # or "unstable"
 
   # Use https://search.nixos.org/packages to find packages
   packages = [
-     pkgs.nodejs_22
-     pkgs.jdk19
+     pkgs.nodejs_24
+     pkgs.jdk24
      pkgs.nodePackages.nodemon
   ];
 
@@ -36,10 +36,14 @@
         npm-install-functions = "cd services/functions && npm ci --no-audit --prefer-offline --no-progress --timing";
 
          default.openFiles = [
+          # Open the configuration file that needs to be updated
+          "client/web/angular-customer-app/src/environments/environment.development.ts"
           # Open the entry point for the backend API.
           "services/cloud-run/src/index.ts"
           # Open the entry point for the Angular Client app.
-          "src/app/app.component.ts"
+          "client/web/angular-customer-app/src/app/chatbot/chatbot.component.ts"
+          # Open the README
+          "README.md"
          ];
       };
       # Runs when the workspace is (re)started
@@ -58,7 +62,7 @@
           # Run "npm run dev" with PORT set to Firebase Studio's defined port for previews,
           # and show it in the web preview panel
           cwd = "client/web/angular-customer-app";
-          command = ["npm" "run" "start" "--" "--port" "$PORT" "--host" "0.0.0.0" "--disable-host-check"];
+          command = ["npm" "run" "start" "--" "--port" "$PORT" "--host" "0.0.0.0"];
           manager = "web";
           env = {
             # Environment variables to set for your server

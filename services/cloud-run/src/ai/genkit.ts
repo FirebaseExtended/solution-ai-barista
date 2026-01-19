@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-import { genkit } from 'genkit/beta'; 
+import { genkit } from 'genkit/beta';
 import { enableGoogleCloudTelemetry } from '@genkit-ai/google-cloud';
-import { gemini20Flash, vertexAI } from '@genkit-ai/vertexai';
-import { HarmCategory, HarmBlockThreshold } from '@google-cloud/vertexai';
+import { vertexAI } from '@genkit-ai/google-genai';
 
 // Enable remote telemetry collection when running in production.
 if (process.env.NODE_ENV == 'production') {
@@ -28,28 +27,28 @@ if (process.env.NODE_ENV == 'production') {
 // Configure safety settings. Block all categories with low scores and above.
 const geminiSafetySettings = [
     {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: 'BLOCK_LOW_AND_ABOVE',
     },
     {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_LOW_AND_ABOVE',
     },
     {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_LOW_AND_ABOVE',
     },
     {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: 'BLOCK_LOW_AND_ABOVE',
     },
-];
+] as const;
 
 export const ai = genkit({
     // Enable the Vertex AI plugin.
     plugins: [vertexAI({ location: 'us-central1', })],
-    // Select a Gemini Pro model.
-    model: gemini20Flash.withConfig({
-        safetySettings: geminiSafetySettings,
-    })
+    // Select a Gemini model and set the safety settings.
+    model: vertexAI.model('gemini-2.5-flash').withConfig({
+        safetySettings: [...geminiSafetySettings],
+    }),
 });

@@ -95,7 +95,12 @@ export const agent = ai.definePrompt({
             * If status is 'MAKE_CHANGES': The order is *not* submitted. Ask the user: "Okay, what would you like to change?" and return to handling their request (update, remove, add).
 6.  **Recommendation Agent:** If the user is unsure what they would like, and they have *not* specified a menu item, use 'recommendationAgent' to get a suggestion. After getting a response, return to step 2, asking if that recommendation is what they want. Do not discuss the recommendation, just use 'add_to_order' once it is selected.
 7.  **Suggested Responses ('suggest_responses'):**
-    * **TIMING:** Call 'suggest_responses' **once and only once** per user turn, as the **very final action** you take internally *before* formulating the text response you will send back to the customer.
+    * **TIMING:** Call 'suggest_responses' **once and only once** per user turn.
+    * **CRITICAL:** You **MUST** make the 'suggest_responses' tool call your **ONLY** output for that turn. **DO NOT** generate the text response to the customer in the same turn as the tool call.
+    * **SEQUENCE:**
+        1. Call 'suggest_responses' with the appropriate options.
+        2. Wait for the tool result.
+        3. **THEN** generate your text response to the customer in the next turn.
     * **PURPOSE:** Provide 1-3 *short*, relevant *potential user replies* (answers to your questions or likely next steps). Do not suggest questions.
     * **CONTENT GUIDELINES:**
         * Suggestions should be potential *answers* to your questions or relevant *next steps*.
@@ -109,7 +114,7 @@ export const agent = ai.definePrompt({
         * If the order seems complete, suggest "Submit Order".
     * Do not suggest items or modifiers not on the MENU.
     * **Empty Call:** If no relevant suggestions apply for that specific turn, call 'suggest_responses' with an empty parameter (e.g., 'suggest_responses()').
-    * **DO NOT** call this function multiple times during your internal processing for a single user message. It must be the last step before generating the user-facing text.
+    * **DO NOT** call this function multiple times during your internal processing for a single user message.
 8.  **Order submission**: Call 'submit_order' to show the complete order to the user and ask them submit it. Returns status:'ORDER_SUBMITTED' and a name for collecting the drinks to indicate the order has been submitted.
 9.  **State Management & Flow:**
     * **DO NOT REMEMBER THE ORDER:** Rely *only* on 'get_order' for the authoritative state when needed (see critical usage above).
