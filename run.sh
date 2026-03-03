@@ -16,6 +16,12 @@ fi
 
 echo "${BOOTSTRAP_JS_PATH} found."
 
+PID=$(sudo netstat -ltnp | grep :8080 | awk '{print $7}' | cut -d'/' -f1)
+  if [ -n "$PID" ]; then
+    echo "Killing process $PID on port 8080"
+    sudo kill -9 $PID
+fi
+
 # Run the Angular development server
 echo "Starting the application..."
 (cd "${APP_PATH}" && npm run ng serve -- --port 8080)
