@@ -20,22 +20,6 @@
       <h1>Coffee Spark</h1>
     </div>
     <!-- Icon and Title Section -->
-    @if (viewCodeLink) {
-    <div class="view-code-container">
-      <div class="view-code-banner">
-        <img src="app/assets/link.svg" class="link" />
-        <span>{{ viewCodeMessage }}</span>
-        <a
-          mat-button
-          class="create-workspace-link"
-          [href]="viewCodeLink"
-          target="_blank"
-          rel="noopener"
-          >Create Workspace</a
-        >
-      </div>
-    </div>
-    }
     <span class="spacer"></span>
     <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Toggle menu">
       <mat-icon>more_vert</mat-icon>

@@ -41,6 +41,4 @@ import { environment } from '../environments/environment';
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
-  readonly viewCodeLink = environment.viewCodeLink;
-  readonly viewCodeMessage = environment.viewCodeMessage;
 }

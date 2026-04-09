@@ -27,8 +27,6 @@ export declare interface BootstrapData {
     measurementId?: string;
     appId?: string;
   };
-  viewCodeLink?: string;
-  viewCodeMessage?: string;
 }
 
 const bootstrapData = window['APP_TEMPLATE_BOOTSTRAP'] as BootstrapData;
@@ -43,8 +41,6 @@ export const environment = {
   firebase: {
     ...bootstrapData?.firebase,
   },
-  viewCodeLink: bootstrapData?.viewCodeLink || '',
-  viewCodeMessage: bootstrapData?.viewCodeMessage || '',
 };
 
 console.log('env', environment);
