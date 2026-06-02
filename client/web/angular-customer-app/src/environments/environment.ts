@@ -41,4 +41,4 @@ export const environment = {
   },
 };
 
-export const geminiModel = "gemini-2.5-flash";
+export const geminiModel = "gemini-3.1-flash-lite";
