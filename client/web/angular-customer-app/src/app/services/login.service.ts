@@ -18,7 +18,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 // import { AppCheck, getToken, onTokenChanged } from '@angular/fire/app-check';
-import { Auth, onAuthStateChanged, signInAnonymously } from '@angular/fire/auth';
+import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { catchError, from, map } from 'rxjs';
 import { ErrorResponse } from '../../../../../../shared/errorResponse';
 import { environment } from '../../environments/environment';
@@ -29,7 +29,7 @@ import { environment } from '../../environments/environment';
   providedIn: 'root',
 })
 export class LoginService {
-  private auth = inject(Auth);
+  private auth = getAuth();
   // private appCheck = inject(AppCheck);
   
   idToken = signal<string>('');

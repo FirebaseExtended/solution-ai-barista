@@ -19,7 +19,7 @@ import {
   ObjectSchema,
   Schema,
   SchemaType,
-} from '@angular/fire/ai';
+} from 'firebase/ai';
 import { BeverageModel } from '../../../../../../../../shared';
 import { getAgentState, updateState } from '../../state/agentState';
 import {
@@ -77,7 +77,9 @@ export const removeItem = (index: number) => {
   const order = getStateOrder();
   const removedItem = order.splice(index, 1);
   updateStateOrder(order);
-  beverageToTuple(removedItem[0]);
+  if (removedItem[0]) {
+    beverageToTuple(removedItem[0]);
+  }
   return getAgentState();
 };
 
@@ -93,7 +95,7 @@ export const clearOrder = () => {
 };
 
 // TODO(@nohe427 / @kroikie / someone else?): This was designed for interrupts. We should maybe make this a button instead of a chat interaction to confirm submitting.
-export const submitOrder = (readyForSubmission: boolean) => {
+export const submitOrder = (readyForSubmission: boolean = true) => {
   if (readyForSubmission) {
     updateState({ ...getAgentState(), readyForSubmission: readyForSubmission });
   }
@@ -149,12 +151,12 @@ export const submitOrder = (readyForSubmission: boolean) => {
   return { state: getAgentState(), message: 'MarkedAsReady' };
 };
 
-export const suggestResponses = (responses: string[]) => {
+export const suggestResponses = (responses: string[] = []) => {
   console.info('[suggest_responses]', { responses: responses });
 
   const state = getAgentState();
   // Save the suggested respones in the current session.
-  updateState({ ...state, suggestedResponses: responses });
+  updateState({ ...state, suggestedResponses: responses ?? [] });
   return { responsesSet: true };
 };
 
@@ -286,7 +288,7 @@ export function handleOrderingFunctionCall(callName: string, callArgs: any) {
     case 'suggest_responses':
       return suggestResponses(callArgs.responses);
     case 'recommendation_agent':
-      return;
+      return getBaristaRecommendation(callArgs.drink, callArgs.modifiers);
     default:
       throw new Error(`Unknown function call: ${callName}`);
   }

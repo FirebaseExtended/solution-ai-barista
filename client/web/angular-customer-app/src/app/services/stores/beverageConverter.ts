@@ -16,7 +16,7 @@
 
 import { BeverageModel } from '../../../../../../../shared';
 import { createBeverage } from '../agents/orderingAgent/orderTools';
-import { DocumentData } from '@angular/fire/firestore';
+import { DocumentData } from 'firebase/firestore';
 
 /**
  * FirestoreDataConverter for Beverage objects. Used for conversion between

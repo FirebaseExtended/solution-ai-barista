@@ -1,4 +1,4 @@
-import { Content } from "@angular/fire/ai";
+import { Content } from "firebase/ai";
 
 export class ChatHistory {
     messages: Content[];

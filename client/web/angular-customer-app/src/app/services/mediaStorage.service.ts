@@ -17,11 +17,11 @@
 import { Injectable, inject, signal } from '@angular/core';
 
 import {
-  Storage,
   getDownloadURL,
+  getStorage,
   ref,
   uploadBytes,
-} from '@angular/fire/storage';
+} from 'firebase/storage';
 import { MediaModel } from '../../../../../../shared/chatMessageModel';
 import { LoginService } from './login.service';
 
@@ -30,7 +30,7 @@ import { LoginService } from './login.service';
 })
 export class MediaStorageService {
   private loginService: LoginService = inject(LoginService);
-  private storage = inject(Storage);
+  private storage = getStorage();
   media = signal<MediaModel | null>(null);
 
   async processMedia(file: File): Promise<void> {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { ApplicationConfig, inject, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, provideEnvironmentInitializer, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideMarkdown } from 'ngx-markdown';
 
@@ -22,13 +22,13 @@ import { provideHttpClient, withFetch } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { routes } from './app.routes';
 
-import { FirebaseApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
-// import { initializeAppCheck, provideAppCheck, ReCaptchaEnterpriseProvider } from '@angular/fire/app-check';
-import { getAuth, provideAuth } from '@angular/fire/auth';
-import { getStorage, provideStorage } from '@angular/fire/storage';
+import { initializeApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
+import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import { environment } from "../environments/environment.development";
-import { getAI, GoogleAIBackend, provideAI } from '@angular/fire/ai';
-import { getFirestore, provideFirestore } from '@angular/fire/firestore';
+import { getAI, GoogleAIBackend } from 'firebase/ai';
+import { getFirestore } from 'firebase/firestore';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -37,14 +37,20 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient( withFetch() ),
     provideMarkdown(),
     provideAnimationsAsync(), 
-    provideFirebaseApp(() => initializeApp(environment.firebase)), 
-    provideStorage(() => getStorage()),
-    provideAuth(() => getAuth()), 
-    provideAI(() => getAI(inject(FirebaseApp), {backend: new GoogleAIBackend()})),
-    provideFirestore(() => getFirestore()),
-    // provideAppCheck(() => {
-    //   const provider = new ReCaptchaEnterpriseProvider(environment.recaptchaEnterpriseKey);
-    //   return initializeAppCheck(undefined, { provider, isTokenAutoRefreshEnabled: true });
-    // }), 
+    provideEnvironmentInitializer(() => {
+      const app = initializeApp(environment.firebase);
+      if (environment.firebase.recaptchaSiteKey) {
+        initializeAppCheck(app, {
+          provider: new ReCaptchaEnterpriseProvider(
+            environment.firebase.recaptchaSiteKey
+          ),
+          isTokenAutoRefreshEnabled: true,
+        });
+      }
+      getStorage(app);
+      getAuth(app);
+      getAI(app, { backend: new GoogleAIBackend() });
+      getFirestore(app);
+    }),
   ]
 };

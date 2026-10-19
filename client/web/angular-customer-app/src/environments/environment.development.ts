@@ -26,6 +26,7 @@ export declare interface BootstrapData {
     messagingSenderId?: string;
     measurementId?: string;
     appId?: string;
+    recaptchaSiteKey?: string;
   };
 }
 

@@ -24,14 +24,14 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, catchError, from, map } from 'rxjs';
 import { geminiModel } from '../../environments/environment';
 import { LoginService } from './login.service';
-import { AI, Content, getGenerativeModel, Part } from '@angular/fire/ai';
+import { Content, FunctionCallingMode, getAI, getGenerativeModel, GoogleAIBackend, Part } from 'firebase/ai';
 import { orderingAgentInfo } from './agents/orderingAgent/orderingAgent';
 import { clearOrder, handleOrderingFunctionCall, orderingTool } from './agents/orderingAgent/orderTools';
-import { getAgentState } from './state/agentState';
+import { getAgentState, updateState } from './state/agentState';
 import { ChatHistory } from './state/chatHistory';
 import { SubmittedOrderStore } from './stores/submittedOrderStore';
 import { generateName } from './utils/submissionUtils';
-import { Firestore, getFirestore } from '@angular/fire/firestore';
+import { getFirestore } from 'firebase/firestore';
 
 // const chatUrl = `${environment.backendUrl}/chat`;
 // const approveUrl = `${environment.backendUrl}/approveOrder`;
@@ -43,8 +43,8 @@ import { Firestore, getFirestore } from '@angular/fire/firestore';
 })
 export class CoffeeService {
   private loginService: LoginService = inject(LoginService);
-  private ai = inject(AI);
-  private firestore = inject(Firestore);
+  private ai = getAI(undefined, { backend: new GoogleAIBackend() });
+  private firestore = getFirestore();
   private generativeModel = getGenerativeModel(this.ai, {model: geminiModel});
   private chatMessages = new ChatHistory();
   constructor() { }
@@ -68,39 +68,104 @@ export class CoffeeService {
   //   };
   // }
 
-  private async generateResponse(parts: Part[], currentStep: number = 0, maxGenSteps: number = 15) {
-    this.generativeModel.generationConfig = {...this.generativeModel.generationConfig, temperature: orderingAgentInfo.config.temperature};
+  private async generateResponse(
+    parts: Part[],
+    currentStep: number = 0,
+    maxGenSteps: number = 15,
+    disableToolCalls: boolean = false,
+    accumulatedText: string = ''
+  ): Promise<{ generationResponse: any; text: string }> {
     const chatSession = this.generativeModel.startChat({
-      systemInstruction: {role: 'system', parts: [{text: orderingAgentInfo.prompt}]} as Content,
+      systemInstruction: {
+        role: 'system',
+        parts: [{ type: 'text', text: orderingAgentInfo.prompt }],
+      } as Content,
       tools: [orderingTool],
+      ...(disableToolCalls
+        ? {
+            toolConfig: {
+              functionCallingConfig: { mode: FunctionCallingMode.NONE },
+            },
+          }
+        : {}),
       history: this.chatMessages.getMessages()
     });
 
     let generationResponse = await chatSession.sendMessage(parts);
-    const functionCalls = generationResponse.response.functionCalls()
-    if(functionCalls !== undefined) {
-      const functionResults: {functionResponse: {name: string, response: any}}[] = [];
+    this.chatMessages.messages = await chatSession.getHistory();
+    const stepText = generationResponse.response.text();
+    if (stepText.trim() !== '') {
+      accumulatedText = stepText;
+    }
+
+    const functionCalls = generationResponse.response.functionCalls();
+    if (functionCalls !== undefined && functionCalls.length > 0) {
+      const functionResults: Part[] = [];
+      let hasSuggestResponses = false;
+      let hasSubmitOrder = false;
+
       for (const call of functionCalls) {
         const result = handleOrderingFunctionCall(call.name, call.args);
-        if(call.name == "submit_order") {
-         break; 
+        if (call.name == "submit_order") {
+          hasSubmitOrder = true;
+          break;
         }
-        if(call.name !== "suggest_responses") {
-          functionResults.push({functionResponse: {name: call.name, response: result}});
+        if (call.name === "suggest_responses") {
+          hasSuggestResponses = true;
         }
+        functionResults.push({
+          type: 'functionResponse',
+          functionResponse: { name: call.name, response: result ?? {} },
+        });
       }
-      if(currentStep<=maxGenSteps && functionResults.length > 0) {
-        generationResponse = await this.generateResponse(functionResults, currentStep + 1, maxGenSteps);
+
+      if (hasSubmitOrder) {
+        return {
+          generationResponse,
+          text: generationResponse.response.text() || accumulatedText,
+        };
+      }
+
+      const onlySuggestResponses = functionCalls.every(
+        (call) => call.name === 'suggest_responses'
+      );
+
+      if (onlySuggestResponses && stepText.trim() !== '') {
+        const lastMessage =
+          this.chatMessages.messages[this.chatMessages.messages.length - 1];
+        if (lastMessage && lastMessage.role === 'model' && lastMessage.parts) {
+          const nonFunctionParts = lastMessage.parts.filter(
+            (part) => part.type !== 'functionCall'
+          );
+          if (nonFunctionParts.length > 0) {
+            lastMessage.parts = nonFunctionParts;
+          }
+        }
+        return { generationResponse, text: stepText };
+      }
+
+      if (currentStep <= maxGenSteps && functionResults.length > 0) {
+        return await this.generateResponse(
+          functionResults,
+          currentStep + 1,
+          maxGenSteps,
+          hasSuggestResponses,
+          accumulatedText
+        );
       }
     }
-    return generationResponse;
+    return {
+      generationResponse,
+      text: generationResponse.response.text() || accumulatedText,
+    };
   }
   
   sendMessage(request: ChatMessageModel): Observable<ChatResponseModel> {
     const parts: Array<Part> = new Array();
-    parts.push({text: request.text});
+    parts.push({ type: 'text', text: request.text });
     if (request.media && request.media.base64Data && request.media.mimeType) {
       parts.push({
+        type: 'inlineData',
         inlineData: {
           data: request.media.base64Data,
           mimeType: request.media.mimeType,
@@ -109,7 +174,7 @@ export class CoffeeService {
       console.log('Image part prepared for ai');
     }
 
-    this.generativeModel.generationConfig = {...this.generativeModel.generationConfig, temperature: orderingAgentInfo.config.temperature};
+    updateState({ ...getAgentState(), suggestedResponses: [] });
 
     const generationResponse = from(this.generateResponse(parts));
     return generationResponse.pipe(
@@ -119,7 +184,7 @@ export class CoffeeService {
       map((data) => {
         const chatResponse: ChatResponseModel = {
           role: 'agent',
-          text: data.response.text(),
+          text: data.text,
           suggestedResponses: getAgentState().suggestedResponses || [],
           readyForSubmission: getAgentState().readyForSubmission || false,
           orderSubmitted: getAgentState().orderSubmitted || false,
@@ -199,7 +264,7 @@ export class CoffeeService {
     // };
 
     return from(new SubmittedOrderStore(
-      this.loginService.idToken(), getFirestore()
+      this.loginService.idToken(), this.firestore
     )
     .submitOrder(generateName(), getAgentState().inProgressOrder || [])).pipe(
       catchError((err) => {

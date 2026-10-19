@@ -8,6 +8,7 @@ window["APP_TEMPLATE_BOOTSTRAP"] = {
       messagingSenderId: "SENDER_ID",
       appId: "APP_ID",
       measurementId: "G-MEASUREMENT_ID",
+      recaptchaSiteKey: "",
     },
     geminiApiKey: "your_api_key",
     debugToken: ""

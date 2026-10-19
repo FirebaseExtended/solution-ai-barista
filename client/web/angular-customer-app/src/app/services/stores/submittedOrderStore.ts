@@ -17,7 +17,7 @@
 import { inject } from '@angular/core';
 import { BeverageModel } from '../../../../../../../shared';
 import { beverageConverter } from './beverageConverter';
-import { addDoc, collection, doc, Firestore, serverTimestamp, setDoc, Timestamp, updateDoc } from '@angular/fire/firestore';
+import { addDoc, collection, doc, Firestore, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 
 /**
  * @class SubmittedOrderSTore
